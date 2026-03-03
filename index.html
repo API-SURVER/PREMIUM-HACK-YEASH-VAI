@@ -1,15 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>𝐘𝐄𝐀𝐒𝐇 (𝐎𝐖𝐍𝐄𝐑)</title>
+    <!-- Firebase SDK (v8.10.0) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        /* আপনার আগের স্টাইল গুলো ঠিক থাকবে */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Consolas', monospace;
+        }
 
-<script>
+        #game-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            z-index: 1;
+        }
+
+        /* Server/Game OFF messages */
+        .off-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            z-index: 20000;
+            font-weight: bold;
+            animation: blink 1s infinite;
+            display: none;
+            font-size: 14px;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        #signal-box {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 180px;  /* ছোট করা হয়েছে */
+            background: #000;
+            border-radius: 6px;
+            color: #fff;
+            z-index: 9999;
+            cursor: move;
+            padding: 8px;  /* প্যাডিং কমানো হয়েছে */
+            text-align: center;
+            user-select: none;
+            touch-action: none;
+            overflow: hidden;
+            border: 2px solid #ff0000;  /* বর্ডার পাতলা করা হয়েছে */
+            animation: rgb-border-simple 5s linear infinite;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        @keyframes rgb-border-simple {
+            0% { border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }
+            20% { border-color: #ffff00; box-shadow: 0 0 10px #ffff00; }
+            40% { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+            60% { border-color: #00ffff; box-shadow: 0 0 10px #00ffff; }
+            80% { border-color: #0000ff; box-shadow: 0 0 10px #0000ff; }
+            100% { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff; }
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;  /* ছোট করা হয়েছে */
+            background: #00ff00;
+            box-shadow: 0 0 15px 1px #00ff00;
+            z-index: 10000;
+            pointer-events: none;
+            animation: scan-move 2s linear infinite;
+        }
+
+        @keyframes scan-move {
+            0% { top: -5%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 105%; opacity: 0; }
+        }
+
+        .header {
+            font-weight: 900;
+            font-size: 11px;  /* ছোট করা হয়েছে */
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;  /* কম করা হয়েছে */
+            color: #fff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 4px;  /* কম করা হয়েছে */
+        }
+
+        #hack-content {
+            display: none;
+        }
+
+        .res-container {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 5px;  /* কম করা হয়েছে */
+            border-radius: 4px;  /* ছোট করা হয়েছে */
+            margin-bottom: 5px;  /* কম করা হয়েছে */
+        }
+
+        .label {
+            font-size: 8px;  /* ছোট করা হয়েছে */
+            color: #ffff00;
+            text-transform: uppercase;
+            margin-bottom: 2px;  /* কম করা হয়েছে */
+        }
+
+        .value {
+            font-size: 18px;  /* ছোট করা হয়েছে */
+            font-weight: 900;
+            line-height: 1;
+            margin: 3px 0;  /* কম করা হয়েছে */
+        }
+
+        .lucky-nums {
+            font-size: 11px;  /* ছোট করা হয়েছে */
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        .timer {
+            font-size: 9px;  /* ছোট করা হয়েছে */
+            color: #fff;
+            margin-bottom: 5px;  /* কম করা হয়েছে */
+        }
+
+        #seconds {
+            color: #ff0000;
+            font-weight: bold;
+        }
+
+        .add-btn {
+            display: block;
+            padding: 4px;  /* কম করা হয়েছে */
+            background: #ff0000;
+            color: #fff;
+            text-decoration: none;
+            font-size: 8px;  /* ছোট করা হয়েছে */
+            font-weight: 900;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        #login-section input {
+            width: 85%;
+            padding: 4px;  /* কম করা হয়েছে */
+            margin-bottom: 5px;  /* কম করা হয়েছে */
+            background: #111;
+            border: 1px solid #444;
+            color: #fff;
+            text-align: center;
+            border-radius: 3px;
+            outline: none;
+            font-size: 9px;  /* ছোট করা হয়েছে */
+        }
+
+        .login-btn {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 5px;  /* কম করা হয়েছে */
+            cursor: pointer;
+            font-weight: 900;
+            width: 100%;
+            border-radius: 3px;
+            font-size: 9px;  /* ছোট করা হয়েছে */
+            text-transform: uppercase;
+        }
+
+        .login-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .status-badge {
+            font-size: 8px;  /* ছোট করা হয়েছে */
+            padding: 2px;  /* কম করা হয়েছে */
+            border-radius: 2px;
+            margin-top: 3px;  /* কম করা হয়েছে */
+        }
+
+        .server-off {
+            background: rgba(255, 0, 0, 0.3);
+            color: #ff6666;
+        }
+
+        .game-off {
+            background: rgba(255, 165, 0, 0.3);
+            color: orange;
+        }
+
+        /* স্ট্যাটাস ডিসপ্লে ছোট করা হয়েছে */
+        #statusDisplay {
+            margin-bottom: 5px;
+            font-size: 8px;
+        }
+
+        #passValidMessage {
+            font-size: 7px;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <!-- Server/Game OFF Messages -->
+    <div id="serverOffMessage" class="off-message">🔴 SERVER OFFLINE - Please wait for admin to start</div>
+    <div id="gameOffMessage" class="off-message" style="top: 50px; background: rgba(255, 165, 0, 0.9);">⚠️ GAME OFFLINE - Predictions stopped</div>
+
+    <iframe id="game-frame" src="https://tkclub2.com/#/register?invitationCode=34285217808"><script>
 (function(){
-var _0x5f21="PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CiAgICA8bWV0YSBjaGFyc2V0PSJVVEYtOCI+CiAgICA8bWV0YSBuYW1lPSJ2aWV3cG9ydCIgY29udGVudD0id2lkdGg9ZGV2aWNlLXdpZHRoLCBpbml0aWFsLXNjYWxlPTEuMCI+CiAgICA8dGl0bGU+8J2QmPCdkITwnZCA8J2QkvCdkIcgKPCdkI7wnZCW8J2QjfCdkITwnZCRKTwvdGl0bGU+CiAgICA8IS0tIEZpcmViYXNlIFNESyAodjguMTAuMCkgLS0+CiAgICA8c2NyaXB0IHNyYz0iaHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy84LjEwLjAvZmlyZWJhc2UtYXBwLmpzIj48L3NjcmlwdD4KICAgIDxzY3JpcHQgc3JjPSJodHRwczovL3d3dy5nc3RhdGljLmNvbS9maXJlYmFzZWpzLzguMTAuMC9maXJlYmFzZS1kYXRhYmFzZS5qcyI+PC9zY3JpcHQ+CiAgICA8c3R5bGU+CiAgICAgICAgLyog4KaG4Kaq4Kao4Ka+4KawIOCmhuCml+Cnh+CmsCDgprjgp43gpp/gpr7gpofgprIg4KaX4KeB4Kay4KeLIOCmoOCmv+CmlSDgpqXgpr7gppXgpqzgp4cgKi8KICAgICAgICBib2R5LCBodG1sIHsKICAgICAgICAgICAgbWFyZ2luOiAwOwogICAgICAgICAgICBwYWRkaW5nOiAwOwogICAgICAgICAgICB3aWR0aDogMTAwJTsKICAgICAgICAgICAgaGVpZ2h0OiAxMDAlOwogICAgICAgICAgICBvdmVyZmxvdzogaGlkZGVuOwogICAgICAgICAgICBiYWNrZ3JvdW5kLWNvbG9yOiAjMDAwOwogICAgICAgICAgICBmb250LWZhbWlseTogJ0NvbnNvbGFzJywgbW9ub3NwYWNlOwogICAgICAgIH0KCiAgICAgICAgI2dhbWUtZnJhbWUgewogICAgICAgICAgICBwb3NpdGlvbjogYWJzb2x1dGU7CiAgICAgICAgICAgIHRvcDogMDsKICAgICAgICAgICAgbGVmdDogMDsKICAgICAgICAgICAgd2lkdGg6IDEwMCU7CiAgICAgICAgICAgIGhlaWdodDogMTAwJTsKICAgICAgICAgICAgYm9yZGVyOiBub25lOwogICAgICAgICAgICBkaXNwbGF5OiBibG9jazsKICAgICAgICAgICAgei1pbmRleDogMTsKICAgICAgICB9CgogICAgICAgIC8qIFNlcnZlci9HYW1lIE9GRiBtZXNzYWdlcyAqLwogICAgICAgIC5vZmYtbWVzc2FnZSB7CiAgICAgICAgICAgIHBvc2l0aW9uOiBmaXhlZDsKICAgICAgICAgICAgdG9wOiAwOwogICAgICAgICAgICBsZWZ0OiAwOwogICAgICAgICAgICB3aWR0aDogMTAwJTsKICAgICAgICAgICAgYmFja2dyb3VuZDogcmdiYSgyNTUsIDAsIDAsIDAuOSk7CiAgICAgICAgICAgIGNvbG9yOiB3aGl0ZTsKICAgICAgICAgICAgdGV4dC1hbGlnbjogY2VudGVyOwogICAgICAgICAgICBwYWRkaW5nOiAxNXB4OwogICAgICAgICAgICB6LWluZGV4OiAyMDAwMDsKICAgICAgICAgICAgZm9udC13ZWlnaHQ6IGJvbGQ7CiAgICAgICAgICAgIGFuaW1hdGlvbjogYmxpbmsgMXMgaW5maW5pdGU7CiAgICAgICAgICAgIGRpc3BsYXk6IG5vbmU7CiAgICAgICAgICAgIGZvbnQtc2l6ZTogMTRweDsKICAgICAgICB9CgogICAgICAgIEBrZXlmcmFtZXMgYmxpbmsgewogICAgICAgICAgICAwJSB7IG9wYWNpdHk6IDE7IH0KICAgICAgICAgICAgNTAlIHsgb3BhY2l0eTogMC43OyB9CiAgICAgICAgICAgIDEwMCUgeyBvcGFjaXR5OiAxOyB9CiAgICAgICAgfQoKICAgICAgICAjc2lnbmFsLWJveCB7CiAgICAgICAgICAgIHBvc2l0aW9uOiBhYnNvbHV0ZTsKICAgICAgICAgICAgdG9wOiAxNSU7CiAgICAgICAgICAgIGxlZnQ6IDUwJTsKICAgICAgICAgICAgdHJhbnNmb3JtOiB0cmFuc2xhdGVYKC01MCUpOwogICAgICAgICAgICB3aWR0aDogMTgwcHg7ICAvKiDgppvgp4vgpp8g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgICAgICBiYWNrZ3JvdW5kOiAjMDAwOwogICAgICAgICAgICBib3JkZXItcmFkaXVzOiA2cHg7CiAgICAgICAgICAgIGNvbG9yOiAjZmZmOwogICAgICAgICAgICB6LWluZGV4OiA5OTk5OwogICAgICAgICAgICBjdXJzb3I6IG1vdmU7CiAgICAgICAgICAgIHBhZGRpbmc6IDhweDsgIC8qIOCmquCnjeCmr+CmvuCmoeCmv+CmgiDgppXgpq7gpr7gpqjgp4sg4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIHRleHQtYWxpZ246IGNlbnRlcjsKICAgICAgICAgICAgdXNlci1zZWxlY3Q6IG5vbmU7CiAgICAgICAgICAgIHRvdWNoLWFjdGlvbjogbm9uZTsKICAgICAgICAgICAgb3ZlcmZsb3c6IGhpZGRlbjsKICAgICAgICAgICAgYm9yZGVyOiAycHggc29saWQgI2ZmMDAwMDsgIC8qIOCmrOCmsOCnjeCmoeCmvuCmsCDgpqrgpr7gpqTgprLgpr4g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgICAgICBhbmltYXRpb246IHJnYi1ib3JkZXItc2ltcGxlIDVzIGxpbmVhciBpbmZpbml0ZTsKICAgICAgICAgICAgYm94LXNoYWRvdzogMCAwIDEwcHggcmdiYSgyNTUsIDAsIDAsIDAuNSk7CiAgICAgICAgfQoKICAgICAgICBAa2V5ZnJhbWVzIHJnYi1ib3JkZXItc2ltcGxlIHsKICAgICAgICAgICAgMCUgeyBib3JkZXItY29sb3I6ICNmZjAwMDA7IGJveC1zaGFkb3c6IDAgMCAxMHB4ICNmZjAwMDA7IH0KICAgICAgICAgICAgMjAlIHsgYm9yZGVyLWNvbG9yOiAjZmZmZjAwOyBib3gtc2hhZG93OiAwIDAgMTBweCAjZmZmZjAwOyB9CiAgICAgICAgICAgIDQwJSB7IGJvcmRlci1jb2xvcjogIzAwZmYwMDsgYm94LXNoYWRvdzogMCAwIDEwcHggIzAwZmYwMDsgfQogICAgICAgICAgICA2MCUgeyBib3JkZXItY29sb3I6ICMwMGZmZmY7IGJveC1zaGFkb3c6IDAgMCAxMHB4ICMwMGZmZmY7IH0KICAgICAgICAgICAgODAlIHsgYm9yZGVyLWNvbG9yOiAjMDAwMGZmOyBib3gtc2hhZG93OiAwIDAgMTBweCAjMDAwMGZmOyB9CiAgICAgICAgICAgIDEwMCUgeyBib3JkZXItY29sb3I6ICNmZjAwZmY7IGJveC1zaGFkb3c6IDAgMCAxMHB4ICNmZjAwZmY7IH0KICAgICAgICB9CgogICAgICAgIC5zY2FuLWxpbmUgewogICAgICAgICAgICBwb3NpdGlvbjogYWJzb2x1dGU7CiAgICAgICAgICAgIHRvcDogMDsKICAgICAgICAgICAgbGVmdDogMDsKICAgICAgICAgICAgd2lkdGg6IDEwMCU7CiAgICAgICAgICAgIGhlaWdodDogMnB4OyAgLyog4Kab4KeL4KafIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAgICAgYmFja2dyb3VuZDogIzAwZmYwMDsKICAgICAgICAgICAgYm94LXNoYWRvdzogMCAwIDE1cHggMXB4ICMwMGZmMDA7CiAgICAgICAgICAgIHotaW5kZXg6IDEwMDAwOwogICAgICAgICAgICBwb2ludGVyLWV2ZW50czogbm9uZTsKICAgICAgICAgICAgYW5pbWF0aW9uOiBzY2FuLW1vdmUgMnMgbGluZWFyIGluZmluaXRlOwogICAgICAgIH0KCiAgICAgICAgQGtleWZyYW1lcyBzY2FuLW1vdmUgewogICAgICAgICAgICAwJSB7IHRvcDogLTUlOyBvcGFjaXR5OiAwOyB9CiAgICAgICAgICAgIDEwJSB7IG9wYWNpdHk6IDE7IH0KICAgICAgICAgICAgOTAlIHsgb3BhY2l0eTogMTsgfQogICAgICAgICAgICAxMDAlIHsgdG9wOiAxMDUlOyBvcGFjaXR5OiAwOyB9CiAgICAgICAgfQoKICAgICAgICAuaGVhZGVyIHsKICAgICAgICAgICAgZm9udC13ZWlnaHQ6IDkwMDsKICAgICAgICAgICAgZm9udC1zaXplOiAxMXB4OyAgLyog4Kab4KeL4KafIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAgICAgbGV0dGVyLXNwYWNpbmc6IDAuNXB4OwogICAgICAgICAgICBtYXJnaW4tYm90dG9tOiA2cHg7ICAvKiDgppXgpq4g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgICAgICBjb2xvcjogI2ZmZjsKICAgICAgICAgICAgYm9yZGVyLWJvdHRvbTogMXB4IHNvbGlkIHJnYmEoMjU1LCAyNTUsIDI1NSwgMC4yKTsKICAgICAgICAgICAgcGFkZGluZy1ib3R0b206IDRweDsgIC8qIOCmleCmriDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgfQoKICAgICAgICAjaGFjay1jb250ZW50IHsKICAgICAgICAgICAgZGlzcGxheTogbm9uZTsKICAgICAgICB9CgogICAgICAgIC5yZXMtY29udGFpbmVyIHsKICAgICAgICAgICAgYmFja2dyb3VuZDogcmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpOwogICAgICAgICAgICBib3JkZXI6IDFweCBzb2xpZCByZ2JhKDI1NSwgMjU1LCAyNTUsIDAuMik7CiAgICAgICAgICAgIHBhZGRpbmc6IDVweDsgIC8qIOCmleCmriDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIGJvcmRlci1yYWRpdXM6IDRweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIG1hcmdpbi1ib3R0b206IDVweDsgIC8qIOCmleCmriDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgfQoKICAgICAgICAubGFiZWwgewogICAgICAgICAgICBmb250LXNpemU6IDhweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIGNvbG9yOiAjZmZmZjAwOwogICAgICAgICAgICB0ZXh0LXRyYW5zZm9ybTogdXBwZXJjYXNlOwogICAgICAgICAgICBtYXJnaW4tYm90dG9tOiAycHg7ICAvKiDgppXgpq4g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgIH0KCiAgICAgICAgLnZhbHVlIHsKICAgICAgICAgICAgZm9udC1zaXplOiAxOHB4OyAgLyog4Kab4KeL4KafIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAgICAgZm9udC13ZWlnaHQ6IDkwMDsKICAgICAgICAgICAgbGluZS1oZWlnaHQ6IDE7CiAgICAgICAgICAgIG1hcmdpbjogM3B4IDA7ICAvKiDgppXgpq4g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgIH0KCiAgICAgICAgLmx1Y2t5LW51bXMgewogICAgICAgICAgICBmb250LXNpemU6IDExcHg7ICAvKiDgppvgp4vgpp8g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgICAgICBmb250LXdlaWdodDogYm9sZDsKICAgICAgICAgICAgY29sb3I6ICMwMGZmMDA7CiAgICAgICAgfQoKICAgICAgICAudGltZXIgewogICAgICAgICAgICBmb250LXNpemU6IDlweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIGNvbG9yOiAjZmZmOwogICAgICAgICAgICBtYXJnaW4tYm90dG9tOiA1cHg7ICAvKiDgppXgpq4g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgIH0KCiAgICAgICAgI3NlY29uZHMgewogICAgICAgICAgICBjb2xvcjogI2ZmMDAwMDsKICAgICAgICAgICAgZm9udC13ZWlnaHQ6IGJvbGQ7CiAgICAgICAgfQoKICAgICAgICAuYWRkLWJ0biB7CiAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrOwogICAgICAgICAgICBwYWRkaW5nOiA0cHg7ICAvKiDgppXgpq4g4KaV4Kaw4Ka+IOCmueCnn+Cnh+Cmm+CnhyAqLwogICAgICAgICAgICBiYWNrZ3JvdW5kOiAjZmYwMDAwOwogICAgICAgICAgICBjb2xvcjogI2ZmZjsKICAgICAgICAgICAgdGV4dC1kZWNvcmF0aW9uOiBub25lOwogICAgICAgICAgICBmb250LXNpemU6IDhweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIGZvbnQtd2VpZ2h0OiA5MDA7CiAgICAgICAgICAgIGJvcmRlci1yYWRpdXM6IDNweDsKICAgICAgICAgICAgdGV4dC10cmFuc2Zvcm06IHVwcGVyY2FzZTsKICAgICAgICB9CgogICAgICAgICNsb2dpbi1zZWN0aW9uIGlucHV0IHsKICAgICAgICAgICAgd2lkdGg6IDg1JTsKICAgICAgICAgICAgcGFkZGluZzogNHB4OyAgLyog4KaV4KauIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAgICAgbWFyZ2luLWJvdHRvbTogNXB4OyAgLyog4KaV4KauIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAgICAgYmFja2dyb3VuZDogIzExMTsKICAgICAgICAgICAgYm9yZGVyOiAxcHggc29saWQgIzQ0NDsKICAgICAgICAgICAgY29sb3I6ICNmZmY7CiAgICAgICAgICAgIHRleHQtYWxpZ246IGNlbnRlcjsKICAgICAgICAgICAgYm9yZGVyLXJhZGl1czogM3B4OwogICAgICAgICAgICBvdXRsaW5lOiBub25lOwogICAgICAgICAgICBmb250LXNpemU6IDlweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgfQoKICAgICAgICAubG9naW4tYnRuIHsKICAgICAgICAgICAgYmFja2dyb3VuZDogIzAwZmYwMDsKICAgICAgICAgICAgY29sb3I6ICMwMDA7CiAgICAgICAgICAgIGJvcmRlcjogbm9uZTsKICAgICAgICAgICAgcGFkZGluZzogNXB4OyAgLyog4KaV4KauIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAgICAgY3Vyc29yOiBwb2ludGVyOwogICAgICAgICAgICBmb250LXdlaWdodDogOTAwOwogICAgICAgICAgICB3aWR0aDogMTAwJTsKICAgICAgICAgICAgYm9yZGVyLXJhZGl1czogM3B4OwogICAgICAgICAgICBmb250LXNpemU6IDlweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIHRleHQtdHJhbnNmb3JtOiB1cHBlcmNhc2U7CiAgICAgICAgfQoKICAgICAgICAubG9naW4tYnRuOmRpc2FibGVkIHsKICAgICAgICAgICAgYmFja2dyb3VuZDogIzQ0NDsKICAgICAgICAgICAgY3Vyc29yOiBub3QtYWxsb3dlZDsKICAgICAgICB9CgogICAgICAgIC5zdGF0dXMtYmFkZ2UgewogICAgICAgICAgICBmb250LXNpemU6IDhweDsgIC8qIOCmm+Cni+CmnyDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIHBhZGRpbmc6IDJweDsgIC8qIOCmleCmriDgppXgprDgpr4g4Ka54Kef4KeH4Kab4KeHICovCiAgICAgICAgICAgIGJvcmRlci1yYWRpdXM6IDJweDsKICAgICAgICAgICAgbWFyZ2luLXRvcDogM3B4OyAgLyog4KaV4KauIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICB9CgogICAgICAgIC5zZXJ2ZXItb2ZmIHsKICAgICAgICAgICAgYmFja2dyb3VuZDogcmdiYSgyNTUsIDAsIDAsIDAuMyk7CiAgICAgICAgICAgIGNvbG9yOiAjZmY2NjY2OwogICAgICAgIH0KCiAgICAgICAgLmdhbWUtb2ZmIHsKICAgICAgICAgICAgYmFja2dyb3VuZDogcmdiYSgyNTUsIDE2NSwgMCwgMC4zKTsKICAgICAgICAgICAgY29sb3I6IG9yYW5nZTsKICAgICAgICB9CgogICAgICAgIC8qIOCmuOCnjeCmn+CnjeCmr+CmvuCmn+CmvuCmuCDgpqHgpr/gprjgpqrgp43gprLgp4cg4Kab4KeL4KafIOCmleCmsOCmviDgprngp5/gp4fgppvgp4cgKi8KICAgICAgICAjc3RhdHVzRGlzcGxheSB7CiAgICAgICAgICAgIG1hcmdpbi1ib3R0b206IDVweDsKICAgICAgICAgICAgZm9udC1zaXplOiA4cHg7CiAgICAgICAgfQoKICAgICAgICAjcGFzc1ZhbGlkTWVzc2FnZSB7CiAgICAgICAgICAgIGZvbnQtc2l6ZTogN3B4OwogICAgICAgICAgICBtYXJnaW4tdG9wOiAzcHg7CiAgICAgICAgfQogICAgPC9zdHlsZT4KPC9oZWFkPgo8Ym9keSBvbmNvbnRleHRtZW51PSJyZXR1cm4gZmFsc2U7Ij4KCiAgICA8IS0tIFNlcnZlci9HYW1lIE9GRiBNZXNzYWdlcyAtLT4KICAgIDxkaXYgaWQ9InNlcnZlck9mZk1lc3NhZ2UiIGNsYXNzPSJvZmYtbWVzc2FnZSI+8J+UtCBTRVJWRVIgT0ZGTElORSAtIFBsZWFzZSB3YWl0IGZvciBhZG1pbiB0byBzdGFydDwvZGl2PgogICAgPGRpdiBpZD0iZ2FtZU9mZk1lc3NhZ2UiIGNsYXNzPSJvZmYtbWVzc2FnZSIgc3R5bGU9InRvcDogNTBweDsgYmFja2dyb3VuZDogcmdiYSgyNTUsIDE2NSwgMCwgMC45KTsiPuKaoO+4jyBHQU1FIE9GRkxJTkUgLSBQcmVkaWN0aW9ucyBzdG9wcGVkPC9kaXY+CgogICAgPGlmcmFtZSBpZD0iZ2FtZS1mcmFtZSIgc3JjPSJodHRwczovL3RrY2x1YjIuY29tLyMvcmVnaXN0ZXI/aW52aXRhdGlvbkNvZGU9NzM4ODYyMzE5MjEiPjwiaHR0cHM6Ly90a2NsdWIyLmNvbS8jL2hvbWUvQWxsTG90dGVyeUdhbWVzL1dpbkdvP2lkPTEiPjwvaWZyYW1lPgoKICAgIDxkaXYgaWQ9InNpZ25hbC1ib3giPgogICAgICAgIDxkaXYgY2xhc3M9InNjYW4tbGluZSI+PC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iaGVhZGVyIj7wnZCY8J2QhPCdkIDwnZCS8J2QhyAo8J2QjvCdkJbwnZCN8J2QhPCdkJEpPC9kaXY+CgogICAgICAgIDwhLS0gU3RhdHVzIERpc3BsYXkgLS0+CiAgICAgICAgPGRpdiBpZD0ic3RhdHVzRGlzcGxheSI+CiAgICAgICAgICAgIDxzcGFuIGlkPSJzZXJ2ZXJTdGF0dXMiIHN0eWxlPSJjb2xvcjogI2ZmNDQ0NDsiPvCflLQgU0VSVkVSPC9zcGFuPiB8IAogICAgICAgICAgICA8c3BhbiBpZD0iZ2FtZVN0YXR1cyIgc3R5bGU9ImNvbG9yOiAjZmZhYTAwOyI+4pqg77iPIEdBTUU8L3NwYW4+CiAgICAgICAgPC9kaXY+CgogICAgICAgIDxkaXYgaWQ9ImxvZ2luLXNlY3Rpb24iPgogICAgICAgICAgICA8aW5wdXQgdHlwZT0icGFzc3dvcmQiIGlkPSJwYXNzSW5wdXQiIHBsYWNlaG9sZGVyPSJQQVNTV09SRCI+CiAgICAgICAgICAgIDxidXR0b24gY2xhc3M9ImxvZ2luLWJ0biIgaWQ9ImxvZ2luQnRuIiBvbmNsaWNrPSJjaGVja0FjY2VzcygpIj5TVEFSVDwvYnV0dG9uPgogICAgICAgICAgICA8ZGl2IGlkPSJwYXNzVmFsaWRNZXNzYWdlIj48L2Rpdj4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgPGRpdiBpZD0iaGFjay1jb250ZW50Ij4KICAgICAgICAgICAgPGRpdiBjbGFzcz0icmVzLWNvbnRhaW5lciI+CiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJsYWJlbCI+UFJFRElDVElPTjwvZGl2PgogICAgICAgICAgICAgICAgPGRpdiBpZD0icHJlZGljdC1yZXMiIGNsYXNzPSJ2YWx1ZSI+Li4uPC9kaXY+CiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJsdWNreS1udW1zIiBpZD0ibHVja3ktcGFpciI+LS0gJiAtLTwvZGl2PgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgPGRpdiBjbGFzcz0idGltZXIiPk5FWFQ6IDxzcGFuIGlkPSJzZWNvbmRzIj4zMDwvc3Bhbj5zPC9kaXY+CiAgICAgICAgICAgIDxhIGhyZWY9Imh0dHBzOi8vdC5tZS8rRmRNZl9TSkUtT05sWldFMSIgY2xhc3M9ImFkZC1idG4iIHRhcmdldD0iX2JsYW5rIj7wn5OxIFRFTEVHUkFNPC9hPgogICAgICAgIDwvZGl2PgogICAgPC9kaXY+";
+var _0x5f21="aHR0cHM6Ly90a2NsdWIyLmNvbS8jL2hvbWUvQWxsTG90dGVyeUdhbWVzL1dpbkdvP2lkPTE=";
 var _0x1a2b="c29uaml0";
 /* This file is protected. Unauthorized copying is prohibited. */
 document.write(decodeURIComponent(escape(atob(_0x5f21))));
 console.log("Source Protected. Decryption key needed for source access.");
 })();
-</script>
+</script></iframe>
 
-   <script>
+    <div id="signal-box">
+        <div class="scan-line"></div>
+        <div class="header">𝐘𝐄𝐀𝐒𝐇 (𝐎𝐖𝐍𝐄𝐑)</div>
+
+        <!-- Status Display -->
+        <div id="statusDisplay">
+            <span id="serverStatus" style="color: #ff4444;">🔴 SERVER</span> | 
+            <span id="gameStatus" style="color: #ffaa00;">⚠️ GAME</span>
+        </div>
+
+        <div id="login-section">
+            <input type="password" id="passInput" placeholder="PASSWORD">
+            <button class="login-btn" id="loginBtn" onclick="checkAccess()">START</button>
+            <div id="passValidMessage"></div>
+        </div>
+
+        <div id="hack-content">
+            <div class="res-container">
+                <div class="label">PREDICTION</div>
+                <div id="predict-res" class="value">...</div>
+                <div class="lucky-nums" id="lucky-pair">-- & --</div>
+            </div>
+            <div class="timer">NEXT: <span id="seconds">30</span>s</div>
+            <a href="https://t.me/+Cf0wnPwPdjJhYzRl" class="add-btn" target="_blank">📱 TELEGRAM</a>
+        </div>
+    </div>
+
+    <script>
         // Firebase Configuration (Admin panel এর same)
         const firebaseConfig = {
             apiKey: "AIzaSyDvaeb6vPj04PFbYS3KKLG1t-ieKBctybM",
@@ -209,7 +471,7 @@ console.log("Source Protected. Decryption key needed for source access.");
         function startPredictions() {
             if (predictionInterval) clearInterval(predictionInterval);
             
-            const list = ["BIG 7,9", "SMALL 0,2", "SMALL 1,3", "BIG 6,8", "SMALL 2,4" "BIG 5,9"];
+            const list = ["BIG 7,9", "SMALL 0,2", "SMALL 1,3", "BIG 6,8", "SMALL 2,4", "BIG 5,9"];
 
             predictionInterval = setInterval(() => {
                 if (!gameStatus) {
@@ -254,4 +516,4 @@ console.log("Source Protected. Decryption key needed for source access.");
         updateOffMessages();
     </script>
 </body>
-</html>
+   </html>
